@@ -127,8 +127,9 @@ def _validate_eigenpairs(
     state_matrix: np.ndarray,
     eigenvalues: np.ndarray,
     eigenvectors: np.ndarray,
+    number_of_modes: int,
 ) -> tuple[float, float]:
-    expected_dimension = 2 * DEFAULT_NUMBER_OF_MODES
+    expected_dimension = 2 * number_of_modes
     assert state_matrix.shape == (expected_dimension, expected_dimension)
     assert eigenvalues.shape == (expected_dimension,)
     assert eigenvectors.shape == (expected_dimension, expected_dimension)
@@ -155,9 +156,10 @@ def sweep_eigenvalues(
     speeds_m_per_s: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """Sweep speed, assemble the model, and store all eigenpairs and checks."""
-    assert number_of_modes == DEFAULT_NUMBER_OF_MODES, (
-        "Eigenpair validation is configured for the required four-mode model"
-    )
+    if isinstance(number_of_modes, bool) or not isinstance(number_of_modes, int):
+        raise TypeError("number_of_modes must be an integer")
+    if number_of_modes < 1:
+        raise ValueError("number_of_modes must be a positive integer")
     if speeds_m_per_s is None:
         speeds_m_per_s = np.linspace(
             SPEED_MIN_M_PER_S,
@@ -166,10 +168,20 @@ def sweep_eigenvalues(
         )
     else:
         speeds_m_per_s = np.asarray(speeds_m_per_s, dtype=float)
-        assert speeds_m_per_s.ndim == 1 and speeds_m_per_s.size > 1
-        assert np.all(np.diff(speeds_m_per_s) > 0.0)
-        assert speeds_m_per_s[0] >= SPEED_MIN_M_PER_S
-        assert speeds_m_per_s[-1] <= SPEED_MAX_M_PER_S
+        if speeds_m_per_s.ndim != 1 or speeds_m_per_s.size < 2:
+            raise ValueError("speeds_m_per_s must contain at least two values")
+        if not np.isfinite(speeds_m_per_s).all():
+            raise ValueError("speeds_m_per_s values must be finite")
+        if not np.all(np.diff(speeds_m_per_s) > 0.0):
+            raise ValueError("speeds_m_per_s values must be strictly increasing")
+        if (
+            speeds_m_per_s[0] < SPEED_MIN_M_PER_S
+            or speeds_m_per_s[-1] > SPEED_MAX_M_PER_S
+        ):
+            raise ValueError(
+                f"speeds_m_per_s values must be within "
+                f"[{SPEED_MIN_M_PER_S:g}, {SPEED_MAX_M_PER_S:g}] m/s"
+            )
     speed_point_count = speeds_m_per_s.size
     matrix_size = 2 * number_of_modes
     eigenvalues_by_speed = np.empty((speed_point_count, matrix_size), dtype=complex)
@@ -185,7 +197,7 @@ def sweep_eigenvalues(
         state_matrix, mass_matrix, coriolis_matrix, stiffness_matrix = (
             build_state_matrix(speed_m_per_s, number_of_modes)
         )
-        assert state_matrix.shape == (8, 8)
+        assert state_matrix.shape == (matrix_size, matrix_size)
         assert mass_matrix.shape == (number_of_modes, number_of_modes)
         assert coriolis_matrix.shape == (number_of_modes, number_of_modes)
         assert stiffness_matrix.shape == (number_of_modes, number_of_modes)
@@ -206,9 +218,9 @@ def sweep_eigenvalues(
             assert np.allclose(coriolis_matrix, 0.0, atol=1e-12)
 
         eigenvalues, eigenvectors = eig(state_matrix, check_finite=True)
-        assert eigenvalues.size == 8
+        assert eigenvalues.size == matrix_size
         maximum_residual, conjugate_error = _validate_eigenpairs(
-            state_matrix, eigenvalues, eigenvectors
+            state_matrix, eigenvalues, eigenvectors, number_of_modes
         )
         eigenvalues_by_speed[speed_index] = eigenvalues
         eigenvectors_by_speed[speed_index] = eigenvectors
@@ -303,8 +315,8 @@ def track_eigenvalue_branches(
     initial_positive_indices = np.flatnonzero(
         eigenvalues_by_speed[0].imag > tolerances[0]
     )
-    assert initial_positive_indices.size == DEFAULT_NUMBER_OF_MODES, (
-        "Expected four positive-imaginary roots at zero transport speed"
+    assert initial_positive_indices.size == eigenvalue_count // 2, (
+        "Expected one positive-imaginary root per mode at zero transport speed"
     )
     initial_positive_indices = initial_positive_indices[
         np.argsort(eigenvalues_by_speed[0, initial_positive_indices].imag)

@@ -10,6 +10,8 @@ from parameters import initial_tension_n, linear_density_kg_per_m
 
 def critical_speed_m_per_s(tension_n: float) -> float:
     """Return the simplified critical speed for a given tension [N]."""
+    if not np.isfinite(tension_n) or tension_n <= 0.0:
+        raise ValueError("tension_n must be finite and positive")
     return float(np.sqrt(tension_n / linear_density_kg_per_m))
 
 

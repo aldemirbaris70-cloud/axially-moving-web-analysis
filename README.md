@@ -189,18 +189,29 @@ Bu toleransın altındaki küçük pozitif reel artıklar fiziksel büyüme yeri
 .
 ├── .gitignore
 ├── README.md
+├── README.en.md
 ├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
+├── run_analysis.py
 ├── results/
 │   ├── critical_speed.png
 │   ├── eigenvalue_stability.png
 │   ├── frequency_vs_speed.png
 │   └── time_response.png
-└── src/
+├── src/
     ├── critical_speed.py
     ├── galerkin_model.py
     ├── parameters.py
     ├── simulation.py
     └── stability_analysis.py
+├── tests/
+│   ├── test_critical_speed.py
+│   ├── test_galerkin_model.py
+│   ├── test_run_analysis.py
+│   ├── test_simulation.py
+│   └── test_stability_analysis.py
+└── .github/workflows/tests.yml
 ```
 
 - `src/parameters.py`: Fiziksel parametreleri ve kesitten türetilen değerleri tanımlar.
@@ -216,20 +227,21 @@ Windows PowerShell'de proje kök dizininden:
 
 ```powershell
 python -m venv .venv
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
 ## Çalıştırma
 
-Proje kök dizininde aşağıdaki komutları sırayla çalıştırın:
+Proje kök dizinindeki tek komut tüm analizleri sırayla çalıştırır ve ilk hata durumunda durur:
 
 ```powershell
-.\.venv\Scripts\python.exe src\critical_speed.py
-.\.venv\Scripts\python.exe src\galerkin_model.py
-.\.venv\Scripts\python.exe src\simulation.py
-.\.venv\Scripts\python.exe src\stability_analysis.py
+\.venv\Scripts\python.exe run_analysis.py
+```
+
+Tek bir analizi çalıştırmak için ilgili `src` betiği doğrudan çağrılabilir. Regresyon testleri:
+
+```powershell
+\.venv\Scripts\python.exe -m pytest
 ```
 
 ## Doğrulanan Sonuçlar

@@ -41,6 +41,8 @@ def assemble_galerkin_matrices(
     integral(phi_i * d(phi_j)/dx) is zero for equal-parity modes and
     2*i*j/(i**2-j**2) otherwise.
     """
+    if isinstance(number_of_modes, bool) or not isinstance(number_of_modes, int):
+        raise TypeError("number_of_modes must be an integer")
     if number_of_modes < 1:
         raise ValueError("number_of_modes must be a positive integer")
     if not np.isfinite(transport_speed_m_per_s):
